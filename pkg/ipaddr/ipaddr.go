@@ -487,3 +487,18 @@ func ToPrefix(cidr cue.Value) (r string, err error) {
 	r = c.ToPrefixBlock().ToCanonicalString()
 	return
 }
+
+// ToBytes returns the cidr as a list of byte values
+func ToBytes(cidr cue.Value) (r []int, err error) {
+	c, err := parseCIDR(&cidr)
+	if err != nil {
+		return
+	}
+	b := c.Bytes()
+	l := len(b)
+	r = make([]int, l)
+	for i := 0; i < l; i++ {
+		r[i] = int(b[i])
+	}
+	return
+}

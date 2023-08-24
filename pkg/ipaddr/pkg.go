@@ -223,5 +223,17 @@ var p = &pkg.Package{
 				c.Ret, c.Err = ToPrefix(cidr)
 			}
 		},
+	}, {
+		Name: "ToBytes",
+		Params: []pkg.Param{
+			{Kind: adt.TopKind},
+		},
+		Result: adt.ListKind,
+		Func: func(c *pkg.CallCtxt) {
+			cidr := c.Value(0)
+			if c.Do() {
+				c.Ret, c.Err = ToBytes(cidr)
+			}
+		},
 	}},
 }
