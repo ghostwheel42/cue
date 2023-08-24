@@ -449,4 +449,41 @@ func Range(cidr cue.Value) ([]string, error) {
 	return r, nil
 }
 
-// TODO: allow iterating over subprefixes of a prefix
+// Contains returns true when b is inside a
+func Contains(a, b cue.Value) (r bool, err error) {
+	ai, err := parseCIDR(&a)
+	if err != nil {
+		return
+	}
+	bi, err := parseCIDR(&b)
+	if err != nil {
+		return
+	}
+	r = ai.Contains(bi)
+	return
+}
+
+// Compare returns -1, 0 or +1 comparing a to b. It compares by count first, then by value.
+func Compare(a, b cue.Value) (r int, err error) {
+	ai, err := parseCIDR(&a)
+	if err != nil {
+		return
+	}
+	bi, err := parseCIDR(&b)
+	if err != nil {
+		return
+	}
+
+	r = ai.Compare(bi)
+	return
+}
+
+// ToPrefixBlock returns the subnet associated with the prefix length of this address.
+func ToPrefix(cidr cue.Value) (r string, err error) {
+	c, err := parseCIDR(&cidr)
+	if err != nil {
+		return
+	}
+	r = c.ToPrefixBlock().ToCanonicalString()
+	return
+}

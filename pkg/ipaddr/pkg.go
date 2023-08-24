@@ -185,5 +185,43 @@ var p = &pkg.Package{
 				c.Ret, c.Err = Range(cidr)
 			}
 		},
+	}, {
+		Name: "Contains",
+		Params: []pkg.Param{
+			{Kind: adt.TopKind},
+			{Kind: adt.TopKind},
+		},
+		Result: adt.BoolKind,
+		Func: func(c *pkg.CallCtxt) {
+			a, b := c.Value(0), c.Value(1)
+			if c.Do() {
+				c.Ret, c.Err = Contains(a, b)
+			}
+		},
+	}, {
+		Name: "Compare",
+		Params: []pkg.Param{
+			{Kind: adt.TopKind},
+			{Kind: adt.TopKind},
+		},
+		Result: adt.IntKind,
+		Func: func(c *pkg.CallCtxt) {
+			a, b := c.Value(0), c.Value(1)
+			if c.Do() {
+				c.Ret, c.Err = Compare(a, b)
+			}
+		},
+	}, {
+		Name: "ToPrefix",
+		Params: []pkg.Param{
+			{Kind: adt.TopKind},
+		},
+		Result: adt.StringKind,
+		Func: func(c *pkg.CallCtxt) {
+			cidr := c.Value(0)
+			if c.Do() {
+				c.Ret, c.Err = ToPrefix(cidr)
+			}
+		},
 	}},
 }
