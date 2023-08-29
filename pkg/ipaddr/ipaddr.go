@@ -94,6 +94,7 @@ func getSubnet(c *ipaddr.IPAddress, s int, index *cue.Value) (*ipaddr.IPAddress,
 	if p == nil {
 		return nil, errors.Newf(token.NoPos, "invalid cidr: no prefix length")
 	}
+	// ignore host bits when getting subnet - is this a good idea?
 	c = c.ToPrefixBlock()
 	pl := p.Len()
 	bc := c.GetBitCount()
@@ -102,15 +103,17 @@ func getSubnet(c *ipaddr.IPAddress, s int, index *cue.Value) (*ipaddr.IPAddress,
 	//  > 0: absolute size
 	// <= 0: size relative to the prefix length
 	if s <= 0 {
-		s = pl - s
-	}
-	if s < pl || s > bc {
-		// TODO: maybe check for abs(s) and return "better" error with negative size
+		ns := pl - s
+		if s < pl || s > bc {
+			return nil, errors.Newf(token.NoPos, "invalid subnet size (%d <= size <= %d): %d (%d)", pl, bc, s, ns)
+		}
+		s = ns
+	} else if s < pl || s > bc {
 		return nil, errors.Newf(token.NoPos, "invalid subnet size (%d <= size <= %d): %d", pl, bc, s)
 	}
 	sl := uint(bc - s)
 
-	// calc max index
+	// calculate maximum index
 	maxIdx := big.NewInt(1)
 	maxIdx.Lsh(maxIdx, uint(s-pl))
 	maxIdx.Sub(maxIdx, big.NewInt(1))
@@ -173,7 +176,7 @@ func getSubnet(c *ipaddr.IPAddress, s int, index *cue.Value) (*ipaddr.IPAddress,
 		return nil, errors.Newf(token.NoPos, "invalid subnet index (abs(index) <= %s): %s", maxIdx, idx)
 	}
 
-	// and handle negative index
+	// handle negative index
 	if idx.Cmp(new(big.Int)) < 0 {
 		idx.Neg(idx)
 		idx.Xor(idx, maxIdx)
@@ -193,18 +196,14 @@ func getSubnet(c *ipaddr.IPAddress, s int, index *cue.Value) (*ipaddr.IPAddress,
 		}
 		ip = v6.ToIP()
 	}
-	// and mask shifted it to fit inside outside prefix
-	ip, err := ip.Mask(c.GetHostMask())
-	if err != nil {
-		return nil, err
-	}
 
 	// prepare result subnet
 	r, err := c.AdjustPrefixLenZeroed(s - pl)
 	if err != nil {
 		return nil, err
 	}
-	// and merge with index IPAddress
+
+	// set host bits to index IPAddress
 	r, err = r.BitwiseOr(ip)
 	if err != nil {
 		return nil, err
@@ -253,6 +252,22 @@ func GetIP(cidr, index cue.Value) (string, error) {
 		return "", err
 	}
 	return r.WithoutPrefixLen().ToCanonicalString(), nil
+}
+
+// GetInterface returns a single IP address at position "index" out of the prefix "cidr" with cidr's prefix length
+func GetInterface(cidr, index cue.Value) (string, error) {
+	// cidr is the prefix the subnet is taken from
+	c, err := parseCIDR(&cidr)
+	if err != nil {
+		return "", err
+	}
+
+	// index is the index of the requested address
+	r, err := getSubnet(c, c.GetBitCount(), &index)
+	if err != nil {
+		return "", err
+	}
+	return r.SetPrefixLen(c.GetPrefixLen().Len()).ToCanonicalString(), nil
 }
 
 type ipInfo struct {
@@ -322,8 +337,8 @@ func Info(ip cue.Value) (*ipInfo, error) {
 	return &res, nil
 }
 
-// IsV4Addr returns true if "ip" represents a single valid IPv4 address
-func IsV4Addr(ip cue.Value) (r bool, err error) {
+// IsV4IP returns true if "ip" represents a single valid IPv4 address (without prefix length)
+func IsV4IP(ip cue.Value) (r bool, err error) {
 	c, err := parseCIDR(&ip)
 	if err != nil {
 		return
@@ -332,8 +347,8 @@ func IsV4Addr(ip cue.Value) (r bool, err error) {
 	return
 }
 
-// IsV6Addr returns true if "ip" represents a single valid IPv6 address
-func IsV6Addr(ip cue.Value) (r bool, err error) {
+// IsV6IP returns true if "ip" represents a single valid IPv6 address (without prefix length)
+func IsV6IP(ip cue.Value) (r bool, err error) {
 	c, err := parseCIDR(&ip)
 	if err != nil {
 		return
@@ -362,6 +377,46 @@ func IsV6CIDR(ip cue.Value) (r bool, err error) {
 	return
 }
 
+// IsV4Prefix returns true if "ip" represents a valid IPv4 prefix (host part zero)
+func IsV4Prefix(ip cue.Value) (r bool, err error) {
+	c, err := parseCIDR(&ip)
+	if err != nil {
+		return
+	}
+	r = c.IsIPv4() && c.ToPrefixBlock().IsSinglePrefixBlock() && c.IsMultiple()
+	return
+}
+
+// IsV6Prefix returns true if "ip" represents a valid IPv6 prefix (host part zero)
+func IsV6Prefix(ip cue.Value) (r bool, err error) {
+	c, err := parseCIDR(&ip)
+	if err != nil {
+		return
+	}
+	r = c.IsIPv6() && c.ToPrefixBlock().IsSinglePrefixBlock() && c.IsMultiple()
+	return
+}
+
+// IsV4Interface returns true if "ip" represents a valid IPv4 interface (host part not zero)
+func IsV4Interface(ip cue.Value) (r bool, err error) {
+	c, err := parseCIDR(&ip)
+	if err != nil {
+		return
+	}
+	r = c.IsIPv4() && c.ToPrefixBlock().IsSinglePrefixBlock() && !c.IsMultiple()
+	return
+}
+
+// IsV6Interface returns true if "ip" represents a valid IPv6 interface (host part not zero)
+func IsV6Interface(ip cue.Value) (r bool, err error) {
+	c, err := parseCIDR(&ip)
+	if err != nil {
+		return
+	}
+	r = c.IsIPv6() && c.ToPrefixBlock().IsSinglePrefixBlock() && !c.IsMultiple()
+	return
+}
+
 // IsV4 returns true if "ip" is either a single valid IPv4 address or a valid IPv4 prefix
 func IsV4(ip cue.Value) (r bool, err error) {
 	c, err := parseCIDR(&ip)
@@ -382,8 +437,8 @@ func IsV6(ip cue.Value) (r bool, err error) {
 	return
 }
 
-// IsAddr returns true if "ip" is a single valid IP address
-func IsAddr(ip cue.Value) (r bool, err error) {
+// IsIP returns true if "ip" is a single valid IP address (without prefix length)
+func IsIP(ip cue.Value) (r bool, err error) {
 	c, err := parseCIDR(&ip)
 	if err != nil {
 		return
@@ -402,6 +457,32 @@ func IsCIDR(ip cue.Value) (r bool, err error) {
 		return
 	}
 	r = c.ToPrefixBlock().IsSinglePrefixBlock()
+	return
+}
+
+// IsPrefix returns true if "ip" is a valid IP prefix (host part zero)
+func IsPrefix(ip cue.Value) (r bool, err error) {
+	c, err := parseCIDR(&ip)
+	if err != nil {
+		return
+	}
+	if !c.IsPrefixed() {
+		return
+	}
+	r = c.ToPrefixBlock().IsSinglePrefixBlock() && c.IsMultiple()
+	return
+}
+
+// IsInterface returns true if "ip" is a valid IP interface (host part not zero)
+func IsInterface(ip cue.Value) (r bool, err error) {
+	c, err := parseCIDR(&ip)
+	if err != nil {
+		return
+	}
+	if !c.IsPrefixed() {
+		return
+	}
+	r = c.ToPrefixBlock().IsSinglePrefixBlock() && !c.IsMultiple()
 	return
 }
 
@@ -478,7 +559,7 @@ func Compare(a, b cue.Value) (r int, err error) {
 	return
 }
 
-// ToPrefixBlock returns the subnet associated with the prefix length of this address.
+// ToPrefix returns the subnet associated with the prefix length of this address.
 func ToPrefix(cidr cue.Value) (r string, err error) {
 	c, err := parseCIDR(&cidr)
 	if err != nil {

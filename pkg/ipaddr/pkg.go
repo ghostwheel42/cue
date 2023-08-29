@@ -42,6 +42,19 @@ var p = &pkg.Package{
 			}
 		},
 	}, {
+		Name: "GetInterface",
+		Params: []pkg.Param{
+			{Kind: adt.TopKind},
+			{Kind: adt.TopKind},
+		},
+		Result: adt.StringKind,
+		Func: func(c *pkg.CallCtxt) {
+			cidr, index := c.Value(0), c.Value(1)
+			if c.Do() {
+				c.Ret, c.Err = GetInterface(cidr, index)
+			}
+		},
+	}, {
 		Name: "Info",
 		Params: []pkg.Param{
 			{Kind: adt.TopKind},
@@ -54,7 +67,7 @@ var p = &pkg.Package{
 			}
 		},
 	}, {
-		Name: "IsV4Addr",
+		Name: "IsV4IP",
 		Params: []pkg.Param{
 			{Kind: adt.TopKind},
 		},
@@ -62,11 +75,11 @@ var p = &pkg.Package{
 		Func: func(c *pkg.CallCtxt) {
 			ip := c.Value(0)
 			if c.Do() {
-				c.Ret, c.Err = IsV4Addr(ip)
+				c.Ret, c.Err = IsV4IP(ip)
 			}
 		},
 	}, {
-		Name: "IsV6Addr",
+		Name: "IsV6IP",
 		Params: []pkg.Param{
 			{Kind: adt.TopKind},
 		},
@@ -74,7 +87,7 @@ var p = &pkg.Package{
 		Func: func(c *pkg.CallCtxt) {
 			ip := c.Value(0)
 			if c.Do() {
-				c.Ret, c.Err = IsV6Addr(ip)
+				c.Ret, c.Err = IsV6IP(ip)
 			}
 		},
 	}, {
@@ -102,6 +115,54 @@ var p = &pkg.Package{
 			}
 		},
 	}, {
+		Name: "IsV4Prefix",
+		Params: []pkg.Param{
+			{Kind: adt.TopKind},
+		},
+		Result: adt.BoolKind,
+		Func: func(c *pkg.CallCtxt) {
+			ip := c.Value(0)
+			if c.Do() {
+				c.Ret, c.Err = IsV4Prefix(ip)
+			}
+		},
+	}, {
+		Name: "IsV6Prefix",
+		Params: []pkg.Param{
+			{Kind: adt.TopKind},
+		},
+		Result: adt.BoolKind,
+		Func: func(c *pkg.CallCtxt) {
+			ip := c.Value(0)
+			if c.Do() {
+				c.Ret, c.Err = IsV6Prefix(ip)
+			}
+		},
+	}, {
+		Name: "IsV4Interface",
+		Params: []pkg.Param{
+			{Kind: adt.TopKind},
+		},
+		Result: adt.BoolKind,
+		Func: func(c *pkg.CallCtxt) {
+			ip := c.Value(0)
+			if c.Do() {
+				c.Ret, c.Err = IsV4Interface(ip)
+			}
+		},
+	}, {
+		Name: "IsV6Interface",
+		Params: []pkg.Param{
+			{Kind: adt.TopKind},
+		},
+		Result: adt.BoolKind,
+		Func: func(c *pkg.CallCtxt) {
+			ip := c.Value(0)
+			if c.Do() {
+				c.Ret, c.Err = IsV6Interface(ip)
+			}
+		},
+	}, {
 		Name: "IsV4",
 		Params: []pkg.Param{
 			{Kind: adt.TopKind},
@@ -126,7 +187,7 @@ var p = &pkg.Package{
 			}
 		},
 	}, {
-		Name: "IsAddr",
+		Name: "IsIP",
 		Params: []pkg.Param{
 			{Kind: adt.TopKind},
 		},
@@ -134,7 +195,7 @@ var p = &pkg.Package{
 		Func: func(c *pkg.CallCtxt) {
 			ip := c.Value(0)
 			if c.Do() {
-				c.Ret, c.Err = IsAddr(ip)
+				c.Ret, c.Err = IsIP(ip)
 			}
 		},
 	}, {
@@ -147,6 +208,30 @@ var p = &pkg.Package{
 			ip := c.Value(0)
 			if c.Do() {
 				c.Ret, c.Err = IsCIDR(ip)
+			}
+		},
+	}, {
+		Name: "IsPrefix",
+		Params: []pkg.Param{
+			{Kind: adt.TopKind},
+		},
+		Result: adt.BoolKind,
+		Func: func(c *pkg.CallCtxt) {
+			ip := c.Value(0)
+			if c.Do() {
+				c.Ret, c.Err = IsPrefix(ip)
+			}
+		},
+	}, {
+		Name: "IsInterface",
+		Params: []pkg.Param{
+			{Kind: adt.TopKind},
+		},
+		Result: adt.BoolKind,
+		Func: func(c *pkg.CallCtxt) {
+			ip := c.Value(0)
+			if c.Do() {
+				c.Ret, c.Err = IsInterface(ip)
 			}
 		},
 	}, {
