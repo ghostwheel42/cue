@@ -104,8 +104,8 @@ func getSubnet(c *ipaddr.IPAddress, s int, index *cue.Value) (*ipaddr.IPAddress,
 	// <= 0: size relative to the prefix length
 	if s <= 0 {
 		ns := pl - s
-		if s < pl || s > bc {
-			return nil, errors.Newf(token.NoPos, "invalid subnet size (%d <= size <= %d): %d (%d)", pl, bc, s, ns)
+		if ns < pl || ns > bc {
+			return nil, errors.Newf(token.NoPos, "invalid subnet size (%d <= size <= %d): %d (was %d)", pl, bc, ns, s)
 		}
 		s = ns
 	} else if s < pl || s > bc {
