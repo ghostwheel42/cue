@@ -326,7 +326,7 @@ func Info(ip cue.Value) (*ipInfo, error) {
 		Interface:    c.ToCanonicalString(),
 		Address:      c.WithoutPrefixLen().GetLower().ToCanonicalString(),
 		Network:      c.ToPrefixBlock().ToCanonicalString(),
-		Identifier:   c.ToPrefixBlock().WithoutPrefixLen().ToCanonicalString(),
+		Identifier:   c.ToPrefixBlock().WithoutPrefixLen().GetLower().ToCanonicalString(),
 		PrefixLength: pl,
 		Netmask:      nm,
 		Wildcard:     wi,
