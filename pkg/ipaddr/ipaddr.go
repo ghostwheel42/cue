@@ -583,3 +583,16 @@ func ToBytes(cidr cue.Value) (r []int, err error) {
 	}
 	return
 }
+
+// PTR returns the PTR to the passed IP address or first address of a CIDR
+func PTR(cidr cue.Value) (r string, err error) {
+	c, err := parseCIDR(&cidr)
+	if err != nil {
+		return
+	}
+	r, err = c.ToPrefixBlock().GetLower().ToReverseDNSString()
+	if err != nil {
+		return
+	}
+	return
+}

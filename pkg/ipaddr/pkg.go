@@ -320,5 +320,17 @@ var p = &pkg.Package{
 				c.Ret, c.Err = ToBytes(cidr)
 			}
 		},
+	}, {
+		Name: "PTR",
+		Params: []pkg.Param{
+			{Kind: adt.TopKind},
+		},
+		Result: adt.StringKind,
+		Func: func(c *pkg.CallCtxt) {
+			cidr := c.Value(0)
+			if c.Do() {
+				c.Ret, c.Err = PTR(cidr)
+			}
+		},
 	}},
 }
