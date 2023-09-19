@@ -297,6 +297,19 @@ var p = &pkg.Package{
 			}
 		},
 	}, {
+		Name: "Overlaps",
+		Params: []pkg.Param{
+			{Kind: adt.TopKind},
+			{Kind: adt.TopKind},
+		},
+		Result: adt.BoolKind,
+		Func: func(c *pkg.CallCtxt) {
+			a, b := c.Value(0), c.Value(1)
+			if c.Do() {
+				c.Ret, c.Err = Overlaps(a, b)
+			}
+		},
+	}, {
 		Name: "ToPrefix",
 		Params: []pkg.Param{
 			{Kind: adt.TopKind},

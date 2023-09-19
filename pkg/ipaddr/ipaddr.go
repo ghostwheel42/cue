@@ -160,13 +160,9 @@ func getSubnet(c *ipaddr.IPAddress, s int, index *cue.Value) (*ipaddr.IPAddress,
 			if err != nil {
 				return nil, err
 			}
-			if ia.GetIPVersion() != c.GetIPVersion() {
-				return nil, errors.Newf(token.NoPos, "invalid subnet index: IP version mismatch")
-			}
-			if ia.IsIPv4() {
-				idx = ia.ToIPv4().GetValue()
-			} else {
-				idx = ia.GetValue()
+			idx = ia.GetLower().GetValue()
+			if ia.IsPrefixed() {
+				idx = idx.Sub(idx, ia.ToPrefixBlock().GetLower().GetValue())
 			}
 		}
 	}
@@ -502,7 +498,6 @@ func Single(ip cue.Value) (r bool, err error) {
 	if err != nil {
 		return
 	}
-
 	r = c.GetPrefixCount().Cmp(big.NewInt(1)) == 0
 	return
 }
@@ -554,8 +549,32 @@ func Compare(a, b cue.Value) (r int, err error) {
 	if err != nil {
 		return
 	}
-
 	r = ai.Compare(bi)
+	return
+}
+
+// Overlaps returns true when any of the CIDRs given as list overlap with the first CIDR.
+func Overlaps(a, b cue.Value) (r bool, err error) {
+	ai, err := parseCIDR(&a)
+	if err != nil {
+		return
+	}
+	iter, err := b.List()
+	if err != nil {
+		return false, err
+	}
+	first := ai.ToSequentialRange()
+	var other *ipaddr.IPAddress
+	for iter.Next() {
+		item := iter.Value()
+		other, err = parseCIDR(&item)
+		if err != nil {
+			return
+		}
+		if other.ToSequentialRange().Overlaps(first) {
+			return true, nil
+		}
+	}
 	return
 }
 
