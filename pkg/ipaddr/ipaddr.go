@@ -275,7 +275,7 @@ type ipInfo struct {
 	Netmask      string `json:"netmask"`
 	Wildcard     string `json:"wildcard"`
 	MaxHost      string `json:"maxhost"`
-	IPversion    uint8  `json:"ipversion"`
+	IPversion    int    `json:"ipversion"`
 	HostPrefix   int    `json:"hostprefix"`
 }
 
@@ -308,14 +308,7 @@ func Info(ip cue.Value) (*ipInfo, error) {
 		mh = m.WithoutPrefixLen().ToCanonicalString()
 	}
 
-	var iv uint8
 	v := c.GetIPVersion()
-	switch v {
-	case "IPv4":
-		iv = 4
-	default:
-		iv = 6
-	}
 	hm := v.GetBitCount()
 
 	res := ipInfo{
@@ -327,7 +320,7 @@ func Info(ip cue.Value) (*ipInfo, error) {
 		Netmask:      nm,
 		Wildcard:     wi,
 		MaxHost:      mh,
-		IPversion:    iv,
+		IPversion:    int(v),
 		HostPrefix:   hm,
 	}
 	return &res, nil
