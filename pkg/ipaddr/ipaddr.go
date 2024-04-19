@@ -386,23 +386,47 @@ func IsV6Prefix(ip cue.Value) (r bool, err error) {
 	return
 }
 
-// IsV4Interface returns true if "ip" represents a valid IPv4 interface (host part not zero)
+// IsV4Interface returns true if "ip" represents a valid IPv4 interface
 func IsV4Interface(ip cue.Value) (r bool, err error) {
 	c, err := parseCIDR(&ip)
 	if err != nil {
 		return
 	}
-	r = c.IsIPv4() && c.ToPrefixBlock().IsSinglePrefixBlock() && !c.IsMultiple()
+	r = c.IsIPv4()
+	if !r {
+		return
+	}
+	r = c.ToPrefixBlock().IsSinglePrefixBlock() && !c.IsMultiple()
+	if r {
+		return
+	}
+	l := c.GetPrefixLen()
+	if l == nil {
+		return
+	}
+	r = l.Len() >= c.GetIPVersion().GetBitCount()-1
 	return
 }
 
-// IsV6Interface returns true if "ip" represents a valid IPv6 interface (host part not zero)
+// IsV6Interface returns true if "ip" represents a valid IPv6 interface
 func IsV6Interface(ip cue.Value) (r bool, err error) {
 	c, err := parseCIDR(&ip)
 	if err != nil {
 		return
 	}
-	r = c.IsIPv6() && c.ToPrefixBlock().IsSinglePrefixBlock() && !c.IsMultiple()
+	r = c.IsIPv6()
+	if !r {
+		return
+	}
+	r = c.ToPrefixBlock().IsSinglePrefixBlock() && !c.IsMultiple()
+	if r {
+		return
+	}
+	l := c.GetPrefixLen()
+	if l == nil {
+		return
+	}
+	r = l.Len() >= c.GetIPVersion().GetBitCount()-1
 	return
 }
 
