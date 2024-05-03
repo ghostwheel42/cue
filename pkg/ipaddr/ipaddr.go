@@ -392,8 +392,7 @@ func IsV4Interface(ip cue.Value) (r bool, err error) {
 	if err != nil {
 		return
 	}
-	r = c.IsIPv4()
-	if !r {
+	if !c.IsPrefixed() || !c.IsIPv4() {
 		return
 	}
 	r = c.ToPrefixBlock().IsSinglePrefixBlock() && !c.IsMultiple()
@@ -414,8 +413,7 @@ func IsV6Interface(ip cue.Value) (r bool, err error) {
 	if err != nil {
 		return
 	}
-	r = c.IsIPv6()
-	if !r {
+	if !c.IsPrefixed() || !c.IsIPv6() {
 		return
 	}
 	r = c.ToPrefixBlock().IsSinglePrefixBlock() && !c.IsMultiple()
@@ -496,6 +494,14 @@ func IsInterface(ip cue.Value) (r bool, err error) {
 		return
 	}
 	r = c.ToPrefixBlock().IsSinglePrefixBlock() && !c.IsMultiple()
+	if r {
+		return
+	}
+	l := c.GetPrefixLen()
+	if l == nil {
+		return
+	}
+	r = l.Len() >= c.GetIPVersion().GetBitCount()-1
 	return
 }
 
