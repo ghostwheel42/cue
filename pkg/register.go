@@ -16,6 +16,7 @@ import (
 	_ "cuelang.org/go/pkg/encoding/toml"
 	_ "cuelang.org/go/pkg/encoding/yaml"
 	_ "cuelang.org/go/pkg/html"
+	_ "cuelang.org/go/pkg/ipaddr"
 	_ "cuelang.org/go/pkg/list"
 	_ "cuelang.org/go/pkg/math"
 	_ "cuelang.org/go/pkg/math/bits"
