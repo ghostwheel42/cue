@@ -267,16 +267,18 @@ func GetInterface(cidr, index cue.Value) (string, error) {
 }
 
 type ipInfo struct {
-	Interface    string `json:"interface"`
-	Address      string `json:"address"`
-	Network      string `json:"network"`
-	Identifier   string `json:"identifier"`
-	PrefixLength int    `json:"prefixlen"`
-	Netmask      string `json:"netmask"`
-	Wildcard     string `json:"wildcard"`
-	MaxHost      string `json:"maxhost"`
-	IPversion    int    `json:"ipversion"`
-	HostPrefix   int    `json:"hostprefix"`
+	Interface    string  `json:"interface"`
+	Address      string  `json:"address"`
+	Network      string  `json:"network"`
+	Identifier   string  `json:"identifier"`
+	PrefixLength int     `json:"prefixlen"`
+	Netmask      string  `json:"netmask"`
+	Wildcard     string  `json:"wildcard"`
+	FirstHost    string  `json:"firsthost"`
+	LastHost     string  `json:"lasthost"`
+	Broadcast    *string `json:"broadcast,omitempty"`
+	IPversion    int     `json:"ipversion"`
+	HostPrefix   int     `json:"hostprefix"`
 }
 
 // Info returns some information about "ip" such as prefix length or normalized representation
@@ -286,30 +288,28 @@ func Info(ip cue.Value) (*ipInfo, error) {
 		return nil, err
 	}
 
-	var pl int
-	var nm string
-	var wi string
-	var mh string
+	v := c.GetIPVersion()
+
+	var pl int = -1
+	var nm, wi, fh, lh, bc string
+	var bcp *string
 
 	l := c.GetPrefixLen()
-	if l == nil {
-		pl = -1
-		nm = ""
-		wi = ""
-		mh = ""
-	} else {
-		pl = l.Len()
-		nm = c.GetNetworkMask().WithoutPrefixLen().ToCanonicalString()
-		wi = c.GetHostMask().WithoutPrefixLen().ToCanonicalString()
+	if l != nil {
 		m, err := c.ToMaxHost()
 		if err != nil {
 			return nil, err
 		}
-		mh = m.WithoutPrefixLen().ToCanonicalString()
+		pl = l.Len()
+		nm = c.GetNetworkMask().WithoutPrefixLen().ToCanonicalString()
+		wi = c.GetHostMask().WithoutPrefixLen().ToCanonicalString()
+		if v == 4 {
+			bc = m.WithoutPrefixLen().ToCanonicalString()
+			bcp = &bc
+		}
+		fh = c.ToPrefixBlock().Increment(1).WithoutPrefixLen().ToCanonicalString()
+		lh = m.Increment(-1).WithoutPrefixLen().ToCanonicalString()
 	}
-
-	v := c.GetIPVersion()
-	hm := v.GetBitCount()
 
 	res := ipInfo{
 		Interface:    c.ToCanonicalString(),
@@ -319,9 +319,11 @@ func Info(ip cue.Value) (*ipInfo, error) {
 		PrefixLength: pl,
 		Netmask:      nm,
 		Wildcard:     wi,
-		MaxHost:      mh,
+		FirstHost:    fh,
+		LastHost:     lh,
+		Broadcast:    bcp,
 		IPversion:    int(v),
-		HostPrefix:   hm,
+		HostPrefix:   v.GetBitCount(),
 	}
 	return &res, nil
 }
