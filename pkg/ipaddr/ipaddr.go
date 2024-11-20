@@ -16,6 +16,7 @@
 package ipaddr
 
 import (
+	"fmt"
 	"math/big"
 	"net"
 
@@ -266,6 +267,28 @@ func GetInterface(cidr, index cue.Value) (string, error) {
 	return r.SetPrefixLen(c.GetPrefixLen().Len()).ToCanonicalString(), nil
 }
 
+// bigInt and ipInfo structs to be used by Info()
+type bigInt struct {
+	big.Int
+}
+
+func (b bigInt) MarshalJSON() ([]byte, error) {
+	return []byte(b.String()), nil
+}
+
+func (b *bigInt) UnmarshalJSON(p []byte) error {
+	s := string(p)
+	if s == "null" {
+		return nil
+	}
+	value, okay := new(big.Int).SetString(s, 0)
+	if !okay {
+		return fmt.Errorf("not a valid big integer: %s", s)
+	}
+	b.Int = *value
+	return nil
+}
+
 type ipInfo struct {
 	Interface    string  `json:"interface"`
 	Address      string  `json:"address"`
@@ -279,6 +302,7 @@ type ipInfo struct {
 	Broadcast    *string `json:"broadcast,omitempty"`
 	IPversion    int     `json:"ipversion"`
 	HostPrefix   int     `json:"hostprefix"`
+	HostCount    bigInt  `json:"hostcount"`
 }
 
 // Info returns some information about "ip" such as prefix length or normalized representation
@@ -289,30 +313,46 @@ func Info(ip cue.Value) (*ipInfo, error) {
 	}
 
 	v := c.GetIPVersion()
+	hp := v.GetBitCount()
 
-	var pl int = -1
-	var nm, wi, fh, lh, bc string
-	var bcp *string
-
-	l := c.GetPrefixLen()
-	if l != nil {
-		m, err := c.ToMaxHost()
-		if err != nil {
-			return nil, err
-		}
+	pl := hp
+	if l := c.GetPrefixLen(); l != nil {
 		pl = l.Len()
-		nm = c.GetNetworkMask().WithoutPrefixLen().ToCanonicalString()
-		wi = c.GetHostMask().WithoutPrefixLen().ToCanonicalString()
-		if v == 4 {
-			bc = m.WithoutPrefixLen().ToCanonicalString()
-			bcp = &bc
-		}
-		fh = c.ToPrefixBlock().Increment(1).WithoutPrefixLen().ToCanonicalString()
-		lh = m.Increment(-1).WithoutPrefixLen().ToCanonicalString()
 	}
 
+	nm := c.GetNetworkMask().WithoutPrefixLen().ToCanonicalString()
+	wi := c.GetHostMask().WithoutPrefixLen().ToCanonicalString()
+
+	m, err := c.ToMaxHost()
+	if err != nil {
+		return nil, err
+	}
+
+	var fh, lh, bc string
+	var bcp *string
+
+	// single host and point-to-point links (RFC 3021 & RFC 6164)
+	if pl >= hp-1 {
+		fh = c.ToPrefixBlock().WithoutPrefixLen().GetLower().ToCanonicalString()
+		lh = fh
+		// bc not defined
+	} else {
+		// "all zero" is network address (v4) or all routers anycast (v6), so first is +1
+		fh = c.ToPrefixBlock().Increment(1).WithoutPrefixLen().ToCanonicalString()
+		if v == 4 {
+			// "all one" is broadcast, so last is -1
+			lh = m.Increment(-1).WithoutPrefixLen().ToCanonicalString()
+			bc = m.WithoutPrefixLen().ToCanonicalString()
+			bcp = &bc
+		} else {
+			lh = m.Increment(-128).WithoutPrefixLen().ToCanonicalString()
+		}
+	}
+
+	hc := c.ToPrefixBlock().GetCount()
+
 	res := ipInfo{
-		Interface:    c.ToCanonicalString(),
+		Interface:    c.SetPrefixLen(pl).ToCanonicalString(),
 		Address:      c.WithoutPrefixLen().GetLower().ToCanonicalString(),
 		Network:      c.ToPrefixBlock().ToCanonicalString(),
 		Identifier:   c.ToPrefixBlock().WithoutPrefixLen().GetLower().ToCanonicalString(),
@@ -323,9 +363,50 @@ func Info(ip cue.Value) (*ipInfo, error) {
 		LastHost:     lh,
 		Broadcast:    bcp,
 		IPversion:    int(v),
-		HostPrefix:   v.GetBitCount(),
+		HostPrefix:   hp,
+		HostCount:    bigInt{*hc},
 	}
+
 	return &res, nil
+}
+
+// Type returns an empty string for a non-special CIDR and a non-empty string when it's special
+func Type(ip cue.Value) (r string, err error) {
+	c, err := parseCIDR(&ip)
+	if err != nil {
+		return
+	}
+	// TODO: implement this. Check single addresses and prefixes for "reservedness"
+	// Better return a "why" and not a bool, so a string stating why it is reserved.
+	// see RFC1918, RFC 3927, etc.
+
+	c.IsUnspecified()
+	c.IsAnyLocal()
+	c.IsLinkLocal()
+	c.IsLoopback()
+	c.IsMulticast()
+	c.IsUnspecified()
+	n := c.GetNetIP()
+	n.IsGlobalUnicast()
+	n.IsInterfaceLocalMulticast()
+	n.IsLinkLocalMulticast()
+	n.IsLinkLocalUnicast()
+	n.IsLoopback()
+	n.IsMulticast()
+	n.IsPrivate()
+	n.IsUnspecified()
+
+	v := c.GetIPVersion()
+	hp := v.GetBitCount()
+
+	pl := hp
+	if l := c.GetPrefixLen(); l != nil {
+		pl = l.Len()
+	}
+
+	r = fmt.Sprintf("TODO: ipv%d %d / %d", v, pl, hp)
+
+	return
 }
 
 // IsV4IP returns true if "ip" represents a single valid IPv4 address (without prefix length)
@@ -517,13 +598,14 @@ func Valid(ip cue.Value) (r bool, err error) {
 	return
 }
 
-// Single returns true if "ip" is just a single valid IP address o a single valid IP prefix
+// Single returns true if "ip" is just a single valid IP address or a single valid IP prefix
 func Single(ip cue.Value) (r bool, err error) {
 	c, err := parseCIDR(&ip)
 	if err != nil {
 		return
 	}
-	r = c.GetPrefixCount().Cmp(big.NewInt(1)) == 0
+	l := c.GetPrefixLen()
+	r = l == nil || l.Len() == c.GetIPVersion().GetBitCount()
 	return
 }
 

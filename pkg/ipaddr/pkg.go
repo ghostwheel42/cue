@@ -67,6 +67,18 @@ var p = &pkg.Package{
 			}
 		},
 	}, {
+		Name: "Type",
+		Params: []pkg.Param{
+			{Kind: adt.TopKind},
+		},
+		Result: adt.StringKind,
+		Func: func(c *pkg.CallCtxt) {
+			ip := c.Value(0)
+			if c.Do() {
+				c.Ret, c.Err = Type(ip)
+			}
+		},
+	}, {
 		Name: "IsV4IP",
 		Params: []pkg.Param{
 			{Kind: adt.TopKind},
